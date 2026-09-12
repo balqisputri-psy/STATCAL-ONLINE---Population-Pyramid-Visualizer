@@ -874,38 +874,38 @@ format_report_number <- function(x, digits = 0) {
 }
 
 build_population_narrative <- function(chart_df,
-                                       left_group,
-                                       right_group,
-                                       category_var,
-                                       group_var,
-                                       panel_var = "None",
-                                       metric = "Frequency",
-                                       percentage_denominator = "Within each group (per panel)",
-                                       digits = 2,
-                                       language = "Bahasa Indonesia") {
+                                        left_group,
+                                        right_group,
+                                        category_var,
+                                        group_var,
+                                        panel_var = "None",
+                                        metric = "Frequency",
+                                        percentage_denominator = "Within each group (per panel)",
+                                        digits = 2,
+                                        language = "Bahasa Indonesia") {
   df <- make_display_safe(as.data.frame(chart_df))
-  if (nrow(df) == 0) return(list(table = character(0), figure = character(0)))
-  
+  if (nrow(df) == 0) return(character(0))
+
   df$Panel <- as.character(df$Panel)
   df$Category <- as.character(df$Category)
   df$Group <- as.character(df$Group)
   df$Frequency <- suppressWarnings(as.numeric(df$Frequency))
   df$Frequency[is.na(df$Frequency)] <- 0
-  
+
   group_summary <- df %>%
     group_by(Group) %>%
     summarise(Frequency = sum(Frequency, na.rm = TRUE), .groups = "drop")
-  
+
   left_total <- sum(group_summary$Frequency[group_summary$Group == left_group], na.rm = TRUE)
   right_total <- sum(group_summary$Frequency[group_summary$Group == right_group], na.rm = TRUE)
   grand_total <- left_total + right_total
   left_share <- if (grand_total > 0) left_total / grand_total * 100 else NA_real_
   right_share <- if (grand_total > 0) right_total / grand_total * 100 else NA_real_
-  
+
   category_summary <- df %>%
     group_by(Group, Category) %>%
     summarise(Frequency = sum(Frequency, na.rm = TRUE), .groups = "drop")
-  
+
   top_category <- function(group_name, group_total) {
     z <- category_summary %>% filter(Group == group_name)
     if (nrow(z) == 0) return(list(category = "-", frequency = 0, share = NA_real_))
@@ -917,10 +917,10 @@ build_population_narrative <- function(chart_df,
       share = if (group_total > 0) f / group_total * 100 else NA_real_
     )
   }
-  
+
   left_top <- top_category(left_group, left_total)
   right_top <- top_category(right_group, right_total)
-  
+
   panel_enabled <- !is.null(panel_var) && length(panel_var) > 0 && !is.na(panel_var) && panel_var != "None" && any(df$Panel != "All")
   panel_text_data <- NULL
   if (panel_enabled) {
@@ -936,9 +936,9 @@ build_population_narrative <- function(chart_df,
       )
     }
   }
-  
+
   same_top <- identical(left_top$category, right_top$category)
-  
+
   if (identical(language, "English")) {
     p1 <- paste0(
       "The analysis compares the selected groups ", left_group, " and ", right_group,
@@ -949,7 +949,7 @@ build_population_narrative <- function(chart_df,
       "%), while ", right_group, " contributes ", format_report_number(right_total),
       " (", format_report_number(right_share, 1), "%)."
     )
-    
+
     p2 <- paste0(
       "For ", left_group, ", the category with the highest frequency is ",
       left_top$category, " with ", format_report_number(left_top$frequency),
@@ -960,14 +960,14 @@ build_population_narrative <- function(chart_df,
       format_report_number(right_top$share, 1), "% of the selected ", right_group,
       " observations)."
     )
-    
+
     p3 <- if (same_top) {
       paste0("Both groups therefore have the same highest-frequency category, namely ", left_top$category, ".")
     } else {
       paste0("The highest-frequency category differs between the two groups: ", left_top$category,
              " for ", left_group, " and ", right_top$category, " for ", right_group, ".")
     }
-    
+
     metric_text <- if (identical(metric, "Percentage")) {
       paste0("The population pyramid is displayed using percentages. The selected percentage denominator is: ", percentage_denominator, ".")
     } else {
@@ -977,21 +977,20 @@ build_population_narrative <- function(chart_df,
       metric_text, " In the figure, ", left_group, " is displayed on the left side and ",
       right_group, " on the right side. Longer bars indicate a larger value for the corresponding category."
     )
-    
-    table_paras <- c(p1, p2, p3)
-    figure_paras <- c(p4)
+
+    paras <- c(p1, p2, p3, p4)
     if (!is.null(panel_text_data)) {
-      figure_paras <- c(figure_paras, paste0(
+      paras <- c(paras, paste0(
         "The chart is divided into ", panel_text_data$n, " panels based on ", panel_var,
         ". Among the displayed panels, ", panel_text_data$top_panel,
         " has the largest combined selected frequency (",
         format_report_number(panel_text_data$top_frequency), ")."
       ))
     }
-    figure_paras <- c(figure_paras, "This interpretation is descriptive and summarizes the displayed distribution; it does not by itself imply statistical significance or causality.")
-    return(list(table = table_paras, figure = figure_paras))
+    paras <- c(paras, "This interpretation is descriptive and summarizes the displayed distribution; it does not by itself imply statistical significance or causality.")
+    return(paras)
   }
-  
+
   p1 <- paste0(
     "Analisis membandingkan kelompok ", left_group, " dan ", right_group,
     " dengan ", category_var, " sebagai variabel kategori dan ", group_var,
@@ -1001,7 +1000,7 @@ build_population_narrative <- function(chart_df,
     "%), sedangkan kelompok ", right_group, " memiliki frekuensi ",
     format_report_number(right_total), " (", format_report_number(right_share, 1), "% )."
   )
-  
+
   p2 <- paste0(
     "Pada kelompok ", left_group, ", kategori dengan frekuensi terbesar adalah ",
     left_top$category, " dengan frekuensi ", format_report_number(left_top$frequency),
@@ -1010,14 +1009,14 @@ build_population_narrative <- function(chart_df,
     right_top$category, " dengan frekuensi ", format_report_number(right_top$frequency),
     " (", format_report_number(right_top$share, 1), "% dari total kelompok ", right_group, ")."
   )
-  
+
   p3 <- if (same_top) {
     paste0("Dengan demikian, kedua kelompok memiliki kategori dengan frekuensi tertinggi yang sama, yaitu ", left_top$category, ".")
   } else {
     paste0("Kategori dengan frekuensi tertinggi berbeda antara kedua kelompok, yaitu ",
            left_top$category, " pada ", left_group, " dan ", right_top$category, " pada ", right_group, ".")
   }
-  
+
   metric_text <- if (identical(metric, "Percentage")) {
     paste0("Grafik population pyramid ditampilkan dalam bentuk persentase dengan denominator: ", percentage_denominator, ".")
   } else {
@@ -1027,19 +1026,18 @@ build_population_narrative <- function(chart_df,
     metric_text, " Pada grafik, kelompok ", left_group, " ditampilkan di sisi kiri dan kelompok ",
     right_group, " di sisi kanan. Semakin panjang batang, semakin besar nilai pada kategori yang bersangkutan."
   )
-  
-  table_paras <- c(p1, p2, p3)
-  figure_paras <- c(p4)
+
+  paras <- c(p1, p2, p3, p4)
   if (!is.null(panel_text_data)) {
-    figure_paras <- c(figure_paras, paste0(
+    paras <- c(paras, paste0(
       "Grafik dibagi menjadi ", panel_text_data$n, " panel berdasarkan variabel ", panel_var,
       ". Di antara panel yang ditampilkan, ", panel_text_data$top_panel,
       " memiliki total frekuensi terpilih terbesar, yaitu ",
       format_report_number(panel_text_data$top_frequency), "."
     ))
   }
-  figure_paras <- c(figure_paras, "Interpretasi ini bersifat deskriptif dan merangkum pola distribusi yang ditampilkan; narasi ini tidak dengan sendirinya menunjukkan signifikansi statistik ataupun hubungan sebab-akibat.")
-  list(table = table_paras, figure = figure_paras)
+  paras <- c(paras, "Interpretasi ini bersifat deskriptif dan merangkum pola distribusi yang ditampilkan; narasi ini tidak dengan sendirinya menunjukkan signifikansi statistik ataupun hubungan sebab-akibat.")
+  paras
 }
 
 export_population_word <- function(file,
@@ -1056,8 +1054,8 @@ export_population_word <- function(file,
                                    include_chart_data = TRUE,
                                    include_raw_data = FALSE,
                                    include_narrative = TRUE,
-                                   table_narrative_paragraphs = character(0),
-                                   figure_narrative_paragraphs = character(0),
+                                   narrative_paragraphs = character(0),
+                                   narrative_heading = "Descriptive Interpretation",
                                    plot_width = 6.4,
                                    plot_height = 4.6,
                                    chart_bg = "white") {
@@ -1079,11 +1077,10 @@ export_population_word <- function(file,
   
   doc <- officer::body_add_par(doc, distribution_title, style = "heading 2")
   doc <- flextable::body_add_flextable(doc, make_report_flextable(distribution_df, 7.5))
-  
-  # Interpretation is placed immediately below the descriptive table,
-  # without a separate numbered section or interpretation heading.
-  if (isTRUE(include_narrative) && length(table_narrative_paragraphs) > 0) {
-    for (txt in table_narrative_paragraphs) {
+
+  if (isTRUE(include_narrative) && length(narrative_paragraphs) > 0) {
+    doc <- officer::body_add_par(doc, narrative_heading, style = "heading 2")
+    for (txt in narrative_paragraphs) {
       if (!is.null(txt) && length(txt) > 0 && !is.na(txt) && nzchar(trimws(as.character(txt)))) {
         doc <- officer::body_add_par(doc, as.character(txt), style = "Normal")
       }
@@ -1102,16 +1099,6 @@ export_population_word <- function(file,
   
   doc <- officer::body_add_par(doc, figure_title, style = "heading 2")
   doc <- officer::body_add_img(doc, src = tmp_png, width = plot_width, height = plot_height)
-  
-  # Figure explanation is placed immediately below the figure,
-  # without a separate numbered section or interpretation heading.
-  if (isTRUE(include_narrative) && length(figure_narrative_paragraphs) > 0) {
-    for (txt in figure_narrative_paragraphs) {
-      if (!is.null(txt) && length(txt) > 0 && !is.na(txt) && nzchar(trimws(as.character(txt)))) {
-        doc <- officer::body_add_par(doc, as.character(txt), style = "Normal")
-      }
-    }
-  }
   
   if (isTRUE(include_chart_data)) {
     doc <- officer::body_add_par(doc, chart_data_title, style = "heading 2")
@@ -1420,7 +1407,7 @@ ui <- dashboardPage(
             textInput("figure_title", "Figure title", value = "Figure 1. Population Pyramid"),
             checkboxInput("word_include_chart_data", "Include Chart Data table in Word", value = TRUE),
             checkboxInput("word_include_raw_data", "Include Raw Data appendix in Word", value = FALSE),
-            checkboxInput("word_include_narrative", "Include automatic interpretation below each result table and figure", value = TRUE),
+            checkboxInput("word_include_narrative", "Include automatic descriptive narrative in Word", value = TRUE),
             selectInput(
               "word_narrative_language",
               "Narrative language",
@@ -1880,7 +1867,7 @@ server <- function(input, output, session) {
     )
   }
   
-  word_narrative_sections <- reactive({
+  word_narrative_paragraphs <- reactive({
     build_population_narrative(
       chart_df = chart_data_for_display(),
       left_group = input$left_group,
@@ -1894,7 +1881,7 @@ server <- function(input, output, session) {
       language = input$word_narrative_language
     )
   })
-  
+
   export_current_word <- function(file) {
     word_width <- min(safe_number(input$export_width, 9, 4, 12), 6.5)
     ratio <- safe_number(input$export_height, 6.5, 3, 20) / safe_number(input$export_width, 9, 4, 30)
@@ -1915,8 +1902,8 @@ server <- function(input, output, session) {
       include_chart_data = isTRUE(input$word_include_chart_data),
       include_raw_data = isTRUE(input$word_include_raw_data),
       include_narrative = isTRUE(input$word_include_narrative),
-      table_narrative_paragraphs = word_narrative_sections()$table,
-      figure_narrative_paragraphs = word_narrative_sections()$figure,
+      narrative_paragraphs = word_narrative_paragraphs(),
+      narrative_heading = ifelse(identical(input$word_narrative_language, "English"), "Descriptive Interpretation", "Interpretasi Deskriptif"),
       plot_width = word_width,
       plot_height = word_height,
       chart_bg = safe_theme_bg(input$chart_theme)
@@ -1989,7 +1976,7 @@ server <- function(input, output, session) {
   # and sent to JavaScript. JavaScript reconstructs the binary bytes as a Blob
   # and triggers a normal browser download. This avoids GitHub Pages routing
   # and avoids empty .txt downloads caused by a broken downloadHandler bridge.
-  
+
   send_result_safely <- function(result, mime) {
     tryCatch({
       req(result, isTRUE(result$ok), !is.null(result$file), file.exists(result$file))
@@ -2001,29 +1988,29 @@ server <- function(input, output, session) {
       )
     })
   }
-  
+
   observeEvent(input$download_chart_generated, {
     send_result_safely(chart_export_result(), "image/png")
   }, ignoreInit = TRUE)
-  
+
   observeEvent(input$download_excel_generated, {
     send_result_safely(
       excel_export_result(),
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
   }, ignoreInit = TRUE)
-  
+
   observeEvent(input$download_word_generated, {
     send_result_safely(
       word_export_result(),
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
   }, ignoreInit = TRUE)
-  
+
   # ----------------------------------------------------------
   # ONE-CLICK GENERATE + BROWSER DOWNLOAD
   # ----------------------------------------------------------
-  
+
   observeEvent(input$download_chart_fallback, {
     filename <- make_export_filename("statcal_population_pyramid", "png", input$export_dpi)
     result <- make_result_safe(
@@ -2044,7 +2031,7 @@ server <- function(input, output, session) {
       showNotification(result$message, type = "error", duration = NULL)
     }
   }, ignoreInit = TRUE)
-  
+
   observeEvent(input$download_excel_fallback, {
     filename <- make_export_filename("statcal_population_pyramid_analysis", "xlsx")
     result <- make_result_safe(
@@ -2062,7 +2049,7 @@ server <- function(input, output, session) {
       showNotification(result$message, type = "error", duration = NULL)
     }
   }, ignoreInit = TRUE)
-  
+
   observeEvent(input$download_word_fallback, {
     filename <- make_export_filename("statcal_population_pyramid_report", "docx")
     result <- make_result_safe(
@@ -2080,7 +2067,7 @@ server <- function(input, output, session) {
       showNotification(result$message, type = "error", duration = NULL)
     }
   }, ignoreInit = TRUE)
-  
+
 }
 
 shinyApp(ui = ui, server = server)
